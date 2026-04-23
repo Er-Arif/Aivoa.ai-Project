@@ -76,6 +76,10 @@ def normalize_time(value: Any) -> time | None:
         return None
 
 
+def current_local_time() -> time:
+    return datetime.now().time().replace(second=0, microsecond=0)
+
+
 def normalize_patch(raw: dict[str, Any]) -> dict[str, Any]:
     normalized: dict[str, Any] = {}
     for key, value in raw.items():

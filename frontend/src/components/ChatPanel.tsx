@@ -30,6 +30,11 @@ export function ChatPanel() {
     return text.trim().length > 0 && !loading && Date.now() - lastSubmitAt > 600;
   }, [text, loading, lastSubmitAt]);
 
+  const shouldShowExplanation = (toolExplanation?: string, content?: string) => {
+    if (!toolExplanation || !content) return false;
+    return toolExplanation.trim() !== content.trim();
+  };
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
     const message = text.trim();
@@ -63,9 +68,10 @@ export function ChatPanel() {
                 <div className="mb-2 flex flex-wrap items-center gap-2">
                   <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-bold text-slate-700">{message.tool_name}</span>
                   {typeof message.confidence === "number" ? <span className="text-xs font-semibold text-slate-500">Confidence {(message.confidence * 100).toFixed(0)}%</span> : null}
+                  {message.status === "completed" ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">Completed</span> : null}
                 </div>
               ) : null}
-              {message.tool_explanation ? <p className="mb-1 text-xs font-semibold text-blue-700">{message.tool_explanation}</p> : null}
+              {shouldShowExplanation(message.tool_explanation, message.content) ? <p className="mb-1 text-xs font-semibold text-blue-700">{message.tool_explanation}</p> : null}
               <p className="whitespace-pre-wrap leading-5">{message.content}</p>
             </div>
           </article>

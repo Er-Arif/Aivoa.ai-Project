@@ -75,6 +75,7 @@ const chatSlice = createSlice({
           tool_name: action.payload.tool_name,
           tool_explanation: action.payload.tool_explanation,
           confidence: action.payload.confidence,
+          status: action.payload.interaction.status,
         });
       })
       .addCase(submitChat.rejected, (state, action) => {

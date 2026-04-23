@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Any
 
 from pydantic import BaseModel, Field, ValidationError
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.hcp_interaction import HCPInteraction
 from app.services.groq_client import GroqClient, LLMJsonError
 from app.services.interaction_service import fetch_history, interaction_to_dict, update_interaction
+from app.services.normalization import current_local_time, normalize_date, normalize_time
 from app.tools.base import ToolResult
 
 INTERACTION_FIELDS = [
@@ -54,6 +56,42 @@ def _schema_instruction() -> str:
     )
 
 
+def _mentions_today(message: str, patch: dict[str, Any]) -> bool:
+    lowered = message.lower()
+    raw_date = patch.get("interaction_date")
+    normalized_date = normalize_date(raw_date) if raw_date is not None else None
+    return "today" in lowered or normalized_date == date.today()
+
+
+def _has_explicit_time(message: str, patch: dict[str, Any]) -> bool:
+    if normalize_time(patch.get("interaction_time")) is not None:
+        return True
+    lowered = message.lower()
+    time_markers = ["am", "pm", " a.m", " p.m", ":"]
+    return any(marker in lowered for marker in time_markers)
+
+
+def _build_log_reply(data: dict[str, Any]) -> str:
+    details: list[str] = []
+    if data.get("hcp_name"):
+        details.append(f"logged the interaction for {data['hcp_name']}")
+    else:
+        details.append("logged the interaction")
+    if data.get("interaction_type"):
+        details.append(f"type: {data['interaction_type']}")
+    if data.get("interaction_date"):
+        details.append(f"date: {data['interaction_date']}")
+    if data.get("interaction_time"):
+        details.append(f"time: {data['interaction_time']}")
+    if data.get("sentiment") and data["sentiment"] != "unknown":
+        details.append(f"sentiment: {data['sentiment']}")
+    if data.get("materials_shared"):
+        details.append(f"materials shared: {', '.join(data['materials_shared'])}")
+    if data.get("topics_discussed"):
+        details.append(f"topics: {', '.join(data['topics_discussed'])}")
+    return "I've " + "; ".join(details) + "."
+
+
 async def classify_tool(llm: GroqClient, user_message: str, current_form: dict[str, Any]) -> tuple[str, float, str, dict[str, Any]]:
     system_prompt = (
         "You classify CRM assistant messages into exactly one primary tool. "
@@ -87,13 +125,16 @@ class LogInteractionTool:
         parsed, raw, _ = await llm.json_completion(system_prompt, user_message)
         payload = tool_payload_from_json(parsed)
         patch = {key: value for key, value in payload.fields.items() if key in INTERACTION_FIELDS}
+        if _mentions_today(user_message, patch) and not _has_explicit_time(user_message, patch):
+            patch["interaction_time"] = current_local_time()
         updated, changed = await update_interaction(session, interaction, patch)
+        updated_dict = interaction_to_dict(updated)
         return ToolResult(
-            data=interaction_to_dict(updated),
+            data=updated_dict,
             changed_fields=changed,
             confidence=payload.confidence,
             explanation=self.explanation,
-            assistant_reply="I've logged this interaction by extracting key details from your message.",
+            assistant_reply=_build_log_reply(updated_dict),
             raw_llm_output=raw,
             validated_output=payload.model_dump(),
         )

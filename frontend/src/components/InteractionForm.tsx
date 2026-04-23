@@ -1,4 +1,4 @@
-import { Calendar, Clock, Package, Search, Sparkles } from "lucide-react";
+import { Calendar, Circle, Clock, Frown, Meh, Package, Search, Smile, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
 import { useAppSelector } from "../app/hooks";
@@ -77,10 +77,10 @@ function DisabledTextarea({
 }
 
 function SentimentRadio({ sentiment }: { sentiment: Sentiment }) {
-  const options: Array<{ value: Sentiment; label: string; icon: string }> = [
-    { value: "positive", label: "Positive", icon: ":)" },
-    { value: "neutral", label: "Neutral", icon: ":|" },
-    { value: "negative", label: "Negative", icon: ":(" },
+  const options: Array<{ value: Sentiment; label: string; icon: ReactNode }> = [
+    { value: "positive", label: "Positive", icon: <Smile size={18} className="text-slate-500" /> },
+    { value: "neutral", label: "Neutral", icon: <Meh size={18} className="text-amber-500" /> },
+    { value: "negative", label: "Negative", icon: <Frown size={18} className="text-slate-500" /> },
   ];
 
   return (
@@ -145,12 +145,7 @@ export function InteractionForm() {
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
       <div className="shrink-0 border-b border-crm-line px-5 py-4 sm:px-7">
-        <div className="flex items-center justify-between gap-3">
-          <h2 className="text-[16px] font-extrabold tracking-wide text-[#1d2940]">Interaction Details</h2>
-          <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${current.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
-            {current.status ?? "draft"}
-          </span>
-        </div>
+        <h2 className="text-[16px] font-extrabold tracking-wide text-[#1d2940]">Interaction Details</h2>
       </div>
 
       <div className="crm-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-7">

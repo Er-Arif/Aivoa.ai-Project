@@ -10,6 +10,32 @@ body {
   margin: 0;
   font-family: Inter, sans-serif;
   background: #f5f6f8;
+  overflow: hidden;
+}
+
+#root {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.crm-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #c5ccd8 transparent;
+}
+
+.crm-scroll::-webkit-scrollbar {
+  width: 10px;
+}
+
+.crm-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.crm-scroll::-webkit-scrollbar-thumb {
+  background: #c5ccd8;
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
 }
 
 @layer components {

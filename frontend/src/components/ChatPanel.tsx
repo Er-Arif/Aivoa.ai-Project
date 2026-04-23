@@ -40,8 +40,8 @@ export function ChatPanel() {
   };
 
   return (
-    <section className="flex min-h-[720px] flex-col overflow-hidden rounded-md border border-crm-line bg-white shadow-sm">
-      <div className="border-b border-crm-line px-6 py-4">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden border-t border-crm-line bg-white lg:border-t-0">
+      <div className="shrink-0 border-b border-crm-line px-5 py-4 sm:px-6">
         <div className="flex items-center gap-3">
           <Bot className="text-crm-blue" size={24} />
           <div>
@@ -51,9 +51,9 @@ export function ChatPanel() {
         </div>
       </div>
 
-      <div className="flex-1 space-y-4 overflow-y-auto bg-[#fbfcfe] px-6 py-4">
+      <div className="crm-scroll min-h-0 flex-1 space-y-4 overflow-y-auto bg-[#fbfcfe] px-5 py-4 sm:px-6">
         <div className="w-[88%] rounded-md border border-crm-line bg-white p-4 text-[15px] font-semibold leading-6 text-slate-700 shadow-sm">
-          Log interaction details here (e.g., “Met Dr. Smith, discussed Product X efficacy, positive sentiment, shared brochure”) or ask for help.
+          Log interaction details here (e.g., "Met Dr. Smith, discussed Product X efficacy, positive sentiment, shared brochure") or ask for help.
         </div>
 
         {messages.map((message) => (
@@ -85,7 +85,7 @@ export function ChatPanel() {
         ) : null}
       </div>
 
-      <form className="flex gap-3 border-t border-crm-line bg-white px-6 py-4" onSubmit={handleSubmit}>
+      <form className="shrink-0 flex gap-3 border-t border-crm-line bg-white px-5 py-4 sm:px-6" onSubmit={handleSubmit}>
         <input
           className="h-10 flex-1 rounded-md border border-crm-line px-4 text-sm font-semibold outline-none transition focus:border-crm-blue focus:ring-2 focus:ring-blue-100 disabled:bg-slate-50"
           disabled={loading}

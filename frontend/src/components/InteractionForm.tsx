@@ -33,7 +33,19 @@ function FieldShell({ field, children }: { field: string; children: ReactNode })
   return <div className={changed ? "rounded-md animate-flash" : ""}>{children}</div>;
 }
 
-function DisabledInput({ field, label, value, placeholder, icon }: { field: string; label: string; value: string; placeholder: string; icon?: ReactNode }) {
+function DisabledInput({
+  field,
+  label,
+  value,
+  placeholder,
+  icon,
+}: {
+  field: string;
+  label: string;
+  value: string;
+  placeholder: string;
+  icon?: ReactNode;
+}) {
   return (
     <FieldShell field={field}>
       <label className="form-label">{label}</label>
@@ -45,7 +57,17 @@ function DisabledInput({ field, label, value, placeholder, icon }: { field: stri
   );
 }
 
-function DisabledTextarea({ field, label, value, placeholder }: { field: string; label: string; value: string; placeholder: string }) {
+function DisabledTextarea({
+  field,
+  label,
+  value,
+  placeholder,
+}: {
+  field: string;
+  label: string;
+  value: string;
+  placeholder: string;
+}) {
   return (
     <FieldShell field={field}>
       <label className="form-label">{label}</label>
@@ -56,14 +78,15 @@ function DisabledTextarea({ field, label, value, placeholder }: { field: string;
 
 function SentimentRadio({ sentiment }: { sentiment: Sentiment }) {
   const options: Array<{ value: Sentiment; label: string; icon: string }> = [
-    { value: "positive", label: "Positive", icon: "🙂" },
-    { value: "neutral", label: "Neutral", icon: "😐" },
-    { value: "negative", label: "Negative", icon: "☹" },
+    { value: "positive", label: "Positive", icon: ":)" },
+    { value: "neutral", label: "Neutral", icon: ":|" },
+    { value: "negative", label: "Negative", icon: ":(" },
   ];
+
   return (
     <FieldShell field="sentiment">
       <label className="form-label">Observed/Inferred HCP Sentiment</label>
-      <div className="flex flex-wrap gap-8">
+      <div className="flex flex-wrap gap-6 sm:gap-8">
         {options.map((option) => (
           <label key={option.value} className="flex items-center gap-2 text-[15px] font-semibold text-slate-700">
             <input className="h-5 w-5 accent-crm-blue" disabled readOnly type="radio" checked={sentiment === option.value} />
@@ -76,7 +99,19 @@ function SentimentRadio({ sentiment }: { sentiment: Sentiment }) {
   );
 }
 
-function AssetBox({ field, title, items, buttonLabel, icon }: { field: string; title: string; items: string[]; buttonLabel: string; icon: ReactNode }) {
+function AssetBox({
+  field,
+  title,
+  items,
+  buttonLabel,
+  icon,
+}: {
+  field: string;
+  title: string;
+  items: string[];
+  buttonLabel: string;
+  icon: ReactNode;
+}) {
   return (
     <FieldShell field={field}>
       <div className="rounded-md border border-crm-line bg-white px-4 py-3">
@@ -108,16 +143,17 @@ export function InteractionForm() {
   const history = useAppSelector((state) => state.interaction.history);
 
   return (
-    <section className="overflow-hidden rounded-md border border-crm-line bg-white shadow-sm">
-      <div className="border-b border-crm-line px-7 py-4">
-        <div className="flex items-center justify-between">
+    <section className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
+      <div className="shrink-0 border-b border-crm-line px-5 py-4 sm:px-7">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-[16px] font-extrabold tracking-wide text-[#1d2940]">Interaction Details</h2>
           <span className={`rounded-full px-3 py-1 text-xs font-bold uppercase ${current.status === "completed" ? "bg-emerald-50 text-emerald-700" : "bg-amber-50 text-amber-700"}`}>
             {current.status ?? "draft"}
           </span>
         </div>
       </div>
-      <div className="space-y-4 px-7 py-5">
+
+      <div className="crm-scroll min-h-0 flex-1 space-y-4 overflow-y-auto px-5 py-5 sm:px-7">
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <DisabledInput field="hcp_name" label="HCP Name" value={text(current.hcp_name, "")} placeholder="Search or select HCP..." />
           <FieldShell field="interaction_type">
@@ -139,9 +175,9 @@ export function InteractionForm() {
         <DisabledInput field="attendees" label="Attendees" value={listText(current.attendees)} placeholder="Enter names or search..." />
         <DisabledTextarea field="topics_discussed" label="Topics Discussed" value={listText(current.topics_discussed)} placeholder="Enter key discussion points..." />
 
-        <button className="inline-flex h-8 items-center gap-2 rounded-md bg-slate-100 px-4 text-[15px] font-bold text-slate-700" disabled>
+        <button className="inline-flex max-w-full items-center gap-2 rounded-md bg-slate-100 px-4 py-2 text-left text-[15px] font-bold text-slate-700" disabled>
           <Sparkles size={16} />
-          Summarize from Voice Note (Requires Consent)
+          <span className="break-words">Summarize from Voice Note (Requires Consent)</span>
         </button>
 
         <div>
@@ -161,7 +197,9 @@ export function InteractionForm() {
             <h3 className="text-[14px] font-extrabold text-slate-700">AI Suggested Follow-ups:</h3>
             {(current.ai_suggested_followups ?? []).length ? (
               <ul className="mt-1 space-y-1 text-sm font-semibold text-blue-600">
-                {current.ai_suggested_followups?.map((item) => <li key={item}>+ {item}</li>)}
+                {current.ai_suggested_followups?.map((item) => (
+                  <li key={item}>+ {item}</li>
+                ))}
               </ul>
             ) : (
               <p className="mt-1 text-sm italic text-slate-500">Suggestions will appear after asking the assistant.</p>

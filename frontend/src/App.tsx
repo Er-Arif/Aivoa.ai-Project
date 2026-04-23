@@ -16,10 +16,10 @@ export default function App() {
   }, [changed, dispatch]);
 
   return (
-    <main className="min-h-screen bg-crm-bg px-2 py-2 text-crm-ink sm:px-4">
-      <div className="mx-auto max-w-[1500px]">
-        <h1 className="mb-5 text-[22px] font-extrabold tracking-[0.12em] text-[#17213a]">Log HCP Interaction</h1>
-        <div className="grid min-h-[calc(100vh-76px)] grid-cols-1 gap-8 lg:grid-cols-[1fr_0.48fr]">
+    <main className="h-screen overflow-hidden bg-crm-bg px-2 py-2 text-crm-ink sm:px-4 sm:py-4">
+      <div className="mx-auto flex h-full max-w-[1500px] min-h-0 flex-col">
+        <h1 className="mb-4 shrink-0 text-[22px] font-extrabold tracking-[0.12em] text-[#17213a]">Log HCP Interaction</h1>
+        <div className="grid min-h-0 flex-1 grid-cols-1 overflow-hidden rounded-xl border border-crm-line bg-white shadow-sm lg:grid-cols-[1fr_0.48fr] lg:divide-x lg:divide-crm-line">
           <InteractionForm />
           <ChatPanel />
         </div>

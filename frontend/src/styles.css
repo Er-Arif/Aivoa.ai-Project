@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Inter, sans-serif;
+  background: #f5f6f8;
+}
+
+@layer components {
+  .form-label {
+    @apply mb-1 block text-[14px] font-extrabold text-slate-700;
+  }
+
+  .form-control {
+    @apply h-10 w-full rounded-md border border-crm-line bg-white px-4 text-[15px] font-semibold text-slate-700 shadow-sm outline-none disabled:cursor-not-allowed disabled:bg-white disabled:text-slate-700;
+  }
+}

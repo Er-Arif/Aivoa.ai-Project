@@ -1,7 +1,7 @@
 from datetime import date, time
 
 from app.services.normalization import compute_status, normalize_patch
-from app.tools.interaction_tools import _build_log_reply, _has_explicit_time, _mentions_today
+from app.tools.interaction_tools import _build_log_reply, _build_suggestion_reply, _extract_suggested_followups, _has_explicit_time, _mentions_today, LLMToolPayload
 
 
 def test_normalize_patch_canonicalizes_date_time_sentiment_and_lists():
@@ -61,3 +61,17 @@ def test_log_reply_includes_key_details():
     assert "19:36" in reply
     assert "positive" in reply
     assert "brochure" in reply
+
+
+def test_extract_suggested_followups_handles_multiple_shapes():
+    payload = LLMToolPayload(fields={"ai_suggested_followups": ["Schedule follow-up meeting"]}, confidence=0.8)
+    assert _extract_suggested_followups({}, payload) == ["Schedule follow-up meeting"]
+
+    payload = LLMToolPayload(fields={}, confidence=0.8, reply="Send the efficacy deck")
+    assert _extract_suggested_followups({"suggestions": ["Share blood test information"]}, payload) == ["Share blood test information"]
+    assert _extract_suggested_followups({}, payload) == ["Send the efficacy deck"]
+
+
+def test_build_suggestion_reply_lists_actions():
+    assert "Schedule follow-up" in _build_suggestion_reply(["Schedule follow-up meeting"])
+    assert "these next follow-up actions" in _build_suggestion_reply(["A", "B"])

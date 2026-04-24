@@ -29,6 +29,7 @@ export interface ChatMessage {
   tool_explanation?: string;
   confidence?: number | null;
   status?: InteractionStatus;
+  quickActions?: string[];
   created_at: string;
 }
 

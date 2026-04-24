@@ -1,8 +1,9 @@
 import { Calendar, Circle, Clock, Frown, Meh, Package, Search, Smile, Sparkles } from "lucide-react";
 import type { ReactNode } from "react";
 
-import { useAppSelector } from "../app/hooks";
+import { useAppDispatch, useAppSelector } from "../app/hooks";
 import type { Interaction, Sentiment } from "../types";
+import { addUserMessage, closeSuggestionOptions, submitChat } from "../features/chat/chatSlice";
 
 const emptyInteraction: Partial<Interaction> = {
   hcp_name: "",
@@ -139,8 +140,17 @@ function AssetBox({
 }
 
 export function InteractionForm() {
+  const dispatch = useAppDispatch();
   const current = useAppSelector((state) => state.interaction.current) ?? emptyInteraction;
   const history = useAppSelector((state) => state.interaction.history);
+  const loading = useAppSelector((state) => state.chat.loading);
+
+  const handleFollowUpClick = (action: string) => {
+    if (loading) return;
+    dispatch(closeSuggestionOptions());
+    dispatch(addUserMessage(action));
+    dispatch(submitChat(action));
+  };
 
   return (
     <section className="flex h-full min-h-0 flex-col overflow-hidden bg-white">
@@ -191,11 +201,19 @@ export function InteractionForm() {
           <div>
             <h3 className="text-[14px] font-extrabold text-slate-700">AI Suggested Follow-ups:</h3>
             {(current.ai_suggested_followups ?? []).length ? (
-              <ul className="mt-1 space-y-1 text-sm font-semibold text-blue-600">
+              <div className="mt-2 space-y-2">
                 {current.ai_suggested_followups?.map((item) => (
-                  <li key={item}>+ {item}</li>
+                  <button
+                    key={item}
+                    type="button"
+                    onClick={() => handleFollowUpClick(item)}
+                    disabled={loading}
+                    className="block w-full rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-left text-sm font-semibold text-blue-800 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-70"
+                  >
+                    {item}
+                  </button>
                 ))}
-              </ul>
+              </div>
             ) : (
               <p className="mt-1 text-sm italic text-slate-500">Suggestions will appear after asking the assistant.</p>
             )}

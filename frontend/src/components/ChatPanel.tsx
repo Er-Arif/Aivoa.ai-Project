@@ -2,7 +2,7 @@ import { FormEvent, useEffect, useMemo, useState } from "react";
 import { Bot, Send, TriangleAlert } from "lucide-react";
 
 import { useAppDispatch, useAppSelector } from "../app/hooks";
-import { addUserMessage, setThinkingPhase, submitChat } from "../features/chat/chatSlice";
+import { addUserMessage, closeSuggestionOptions, setThinkingPhase, submitChat } from "../features/chat/chatSlice";
 
 const thinkingLabels = {
   idle: "",
@@ -33,6 +33,17 @@ export function ChatPanel() {
   const shouldShowExplanation = (toolExplanation?: string, content?: string) => {
     if (!toolExplanation || !content) return false;
     return toolExplanation.trim() !== content.trim();
+  };
+
+  const handleQuickAction = (action: string) => {
+    if (loading) return;
+    if (action === "Exit") {
+      dispatch(closeSuggestionOptions("All set. Follow-up suggestions are closed."));
+      return;
+    }
+    dispatch(closeSuggestionOptions());
+    dispatch(addUserMessage(action));
+    dispatch(submitChat(action));
   };
 
   const handleSubmit = (event: FormEvent) => {
@@ -73,6 +84,24 @@ export function ChatPanel() {
               ) : null}
               {shouldShowExplanation(message.tool_explanation, message.content) ? <p className="mb-1 text-xs font-semibold text-blue-700">{message.tool_explanation}</p> : null}
               <p className="whitespace-pre-wrap leading-5">{message.content}</p>
+              {message.quickActions?.length ? (
+                <div className="mt-3 space-y-2">
+                  {message.quickActions.map((action) => (
+                    <button
+                      key={`${message.id}-${action}`}
+                      type="button"
+                      onClick={() => handleQuickAction(action)}
+                      className={`block w-full rounded-md border px-3 py-2 text-left text-sm font-semibold transition ${
+                        action === "Exit"
+                          ? "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100"
+                          : "border-blue-200 bg-blue-50 text-blue-800 hover:bg-blue-100"
+                      }`}
+                    >
+                      {action}
+                    </button>
+                  ))}
+                </div>
+              ) : null}
             </div>
           </article>
         ))}

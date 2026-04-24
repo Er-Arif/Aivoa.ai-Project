@@ -92,6 +92,37 @@ def _build_log_reply(data: dict[str, Any]) -> str:
     return "I've " + "; ".join(details) + "."
 
 
+def _extract_suggested_followups(parsed: dict[str, Any], payload: LLMToolPayload) -> list[str]:
+    direct_candidates = [
+        payload.fields.get("ai_suggested_followups"),
+        payload.fields.get("follow_up_actions"),
+        parsed.get("ai_suggested_followups"),
+        parsed.get("follow_up_actions"),
+        parsed.get("suggestions"),
+        parsed.get("next_actions"),
+        parsed.get("actions"),
+    ]
+    for candidate in direct_candidates:
+        if isinstance(candidate, list):
+            return [str(item).strip() for item in candidate if str(item).strip()]
+        if isinstance(candidate, str) and candidate.strip():
+            return [candidate.strip()]
+
+    reply_like = payload.reply or parsed.get("reply") or parsed.get("summary") or parsed.get("suggestion")
+    if isinstance(reply_like, str) and reply_like.strip():
+        return [reply_like.strip()]
+
+    return []
+
+
+def _build_suggestion_reply(suggestions: list[str]) -> str:
+    if not suggestions:
+        return "I couldn't generate a clear follow-up suggestion from the current interaction."
+    if len(suggestions) == 1:
+        return f"I suggest this next follow-up action: {suggestions[0]}."
+    return "I suggest these next follow-up actions: " + "; ".join(suggestions) + "."
+
+
 async def classify_tool(llm: GroqClient, user_message: str, current_form: dict[str, Any]) -> tuple[str, float, str, dict[str, Any]]:
     system_prompt = (
         "You classify CRM assistant messages into exactly one primary tool. "
@@ -230,15 +261,17 @@ class SuggestNextActionTool:
         current = interaction_to_dict(interaction)
         system_prompt = (
             "Recommend practical next CRM follow-up actions. "
-            "Return JSON only with fields: fields, confidence where fields.ai_suggested_followups is an array of strings."
+            "Return JSON only. Preferred shape is {\"fields\":{\"ai_suggested_followups\":[...]},\"confidence\":0-1,\"reply\":\"...\"}. "
+            "You may also return ai_suggested_followups directly at top level. Suggestions must be concrete and actionable."
         )
         parsed, raw, _ = await llm.json_completion(system_prompt, f"Interaction: {current}")
         payload = tool_payload_from_json(parsed)
-        suggestions = payload.fields.get("ai_suggested_followups", [])
+        suggestions = _extract_suggested_followups(parsed, payload)
         updated, changed = await update_interaction(session, interaction, {"ai_suggested_followups": suggestions})
-        reply = "I suggested the next best follow-up actions based on this interaction."
+        updated_dict = interaction_to_dict(updated)
+        reply = _build_suggestion_reply(updated_dict.get("ai_suggested_followups", []))
         return ToolResult(
-            data=interaction_to_dict(updated),
+            data=updated_dict,
             changed_fields=changed,
             confidence=payload.confidence,
             explanation=self.explanation,

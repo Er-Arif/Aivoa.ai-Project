@@ -42,6 +42,29 @@ export const submitChat = createAsyncThunk<
   }
 });
 
+function isInitialFollowUpPrompt(message: string): boolean {
+  const normalized = message.trim().toLowerCase();
+  const genericPrompts = [
+    "suggest follow up",
+    "suggest follow-up",
+    "suggest next action",
+    "what should i do next",
+    "make a follow up action",
+    "make a follow-up action",
+    "what should i do next for this hcp",
+  ];
+  return genericPrompts.some((prompt) => normalized === prompt || normalized.includes(prompt));
+}
+
+function buildAssistantContent(action: PayloadAction<ChatResponse>["payload"], requestMessage: string): string {
+  if (action.tool_name === "SuggestNextActionTool" && action.interaction.ai_suggested_followups.length) {
+    return isInitialFollowUpPrompt(requestMessage)
+      ? "Here are the suggested follow-up actions."
+      : "Done. Here are more suggested follow-up actions.";
+  }
+  return action.assistant_message.content;
+}
+
 const chatSlice = createSlice({
   name: "chat",
   initialState,
@@ -58,6 +81,17 @@ const chatSlice = createSlice({
     setThinkingPhase(state, action: PayloadAction<ThinkingPhase>) {
       state.thinkingPhase = action.payload;
     },
+    closeSuggestionOptions(state, action: PayloadAction<string | undefined>) {
+      state.messages = state.messages.map((message) =>
+        message.quickActions?.length
+          ? {
+              ...message,
+              content: action.payload ?? message.content,
+              quickActions: [],
+            }
+          : message,
+      );
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -72,10 +106,15 @@ const chatSlice = createSlice({
         state.activeInteractionId = action.payload.interaction.id;
         state.messages.push({
           ...action.payload.assistant_message,
+          content: buildAssistantContent(action.payload, action.meta.arg),
           tool_name: action.payload.tool_name,
           tool_explanation: action.payload.tool_explanation,
           confidence: action.payload.confidence,
           status: action.payload.interaction.status,
+          quickActions:
+            action.payload.tool_name === "SuggestNextActionTool" && action.payload.interaction.ai_suggested_followups.length
+              ? [...action.payload.interaction.ai_suggested_followups, "Exit"]
+              : [],
         });
       })
       .addCase(submitChat.rejected, (state, action) => {
@@ -94,5 +133,5 @@ const chatSlice = createSlice({
   },
 });
 
-export const { addUserMessage, setThinkingPhase } = chatSlice.actions;
+export const { addUserMessage, closeSuggestionOptions, setThinkingPhase } = chatSlice.actions;
 export default chatSlice.reducer;

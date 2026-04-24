@@ -93,6 +93,20 @@ def _build_log_reply(data: dict[str, Any]) -> str:
 
 
 def _extract_suggested_followups(parsed: dict[str, Any], payload: LLMToolPayload) -> list[str]:
+    def normalize_suggestion_item(item: Any) -> str:
+        if isinstance(item, dict):
+            action = str(item.get("action") or item.get("title") or item.get("task") or item.get("suggestion") or "").strip()
+            due_date = str(item.get("due_date") or item.get("due") or item.get("timeline") or "").strip()
+            owner = str(item.get("owner") or item.get("assignee") or "").strip()
+            if action and due_date:
+                return f"{action} by {due_date}"
+            if action and owner:
+                return f"{action} ({owner})"
+            if action:
+                return action
+            return ""
+        return str(item).strip()
+
     direct_candidates = [
         payload.fields.get("ai_suggested_followups"),
         payload.fields.get("follow_up_actions"),
@@ -104,7 +118,8 @@ def _extract_suggested_followups(parsed: dict[str, Any], payload: LLMToolPayload
     ]
     for candidate in direct_candidates:
         if isinstance(candidate, list):
-            return [str(item).strip() for item in candidate if str(item).strip()]
+            normalized = [normalize_suggestion_item(item) for item in candidate]
+            return [item for item in normalized if item]
         if isinstance(candidate, str) and candidate.strip():
             return [candidate.strip()]
 

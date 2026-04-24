@@ -9,6 +9,14 @@ A production-structured demo CRM module where Healthcare Professional (HCP) inte
 - **AI Layer:** LangGraph orchestrates tool selection and execution. Groq provides the LLM with `gemma2-9b-it` as primary and `llama-3.3-70b-versatile` as fallback.
 - **Database:** PostgreSQL via Docker Compose.
 
+Simple architecture diagram:
+
+```text
+User -> React UI -> FastAPI -> LangGraph Agent -> Tool -> PostgreSQL
+  ^                                                       |
+  |------------------- Response / Updated UI -------------|
+```
+
 LangGraph flow:
 
 ```text
@@ -23,7 +31,7 @@ The LangGraph agent is the orchestration layer for the HCP interaction workflow.
 
 Its role in this project is to:
 
-- receive the user’s natural-language CRM request
+- receive the user's natural-language CRM request
 - inspect the current interaction state
 - classify the intent of the request
 - choose exactly one primary sales-related tool for that request
@@ -82,7 +90,7 @@ Purpose:
 - Modify an already logged HCP interaction.
 
 How it works:
-- Uses the current saved interaction plus the user’s correction message.
+- Uses the current saved interaction plus the user's correction message.
 - Updates only the fields explicitly mentioned by the user.
 - Preserves untouched fields by performing a safe partial backend merge.
 - Returns the updated interaction without replacing the entire object.
@@ -153,7 +161,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:5173`.
+Open `http://localhost:4010`.
 
 ## Demo Prompts
 
@@ -162,6 +170,8 @@ Open `http://localhost:5173`.
 - `Give summary`
 - `Show previous interactions with Dr. Sharma`
 - `What should I do next?`
+
+These prompts are enough for a reviewer to verify all five tools quickly.
 
 ## API
 
@@ -194,3 +204,4 @@ Backend-safe partial patch endpoint. The UI does not expose manual field editing
 - LLM output is never trusted directly; it is parsed, validated, normalized, and merged server-side.
 - `EditInteractionTool` returns only changed fields, and untouched values are preserved.
 - History responses are separate from current form state and never overwrite the active interaction.
+- If the Groq API key is missing or the LLM call fails, the backend returns a friendly fallback response instead of a raw server error, and the UI shows that message in the chat panel.

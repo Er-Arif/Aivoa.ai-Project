@@ -67,6 +67,20 @@ def test_extract_suggested_followups_handles_multiple_shapes():
     payload = LLMToolPayload(fields={"ai_suggested_followups": ["Schedule follow-up meeting"]}, confidence=0.8)
     assert _extract_suggested_followups({}, payload) == ["Schedule follow-up meeting"]
 
+    payload = LLMToolPayload(
+        fields={
+            "ai_suggested_followups": [
+                {"action": "Schedule a call with Dr. Sharma", "due_date": "2026-04-27"},
+                {"action": "Send efficacy deck", "owner": "sales team"},
+            ]
+        },
+        confidence=0.8,
+    )
+    assert _extract_suggested_followups({}, payload) == [
+        "Schedule a call with Dr. Sharma by 2026-04-27",
+        "Send efficacy deck (sales team)",
+    ]
+
     payload = LLMToolPayload(fields={}, confidence=0.8, reply="Send the efficacy deck")
     assert _extract_suggested_followups({"suggestions": ["Share blood test information"]}, payload) == ["Share blood test information"]
     assert _extract_suggested_followups({}, payload) == ["Send the efficacy deck"]

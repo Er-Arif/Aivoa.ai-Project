@@ -1,13 +1,18 @@
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.exceptions import InfrastructureError
+from app.core.logging import log_event
 from app.models.chat_message import ChatMessage
 from app.models.hcp_interaction import HCPInteraction
 from app.schemas.interaction import InteractionPatch
 from app.services.normalization import compute_status, normalize_patch
+
+import logging
 
 
 def interaction_to_dict(interaction: HCPInteraction) -> dict[str, Any]:
@@ -41,8 +46,14 @@ async def create_interaction(session: AsyncSession) -> HCPInteraction:
         status="draft",
     )
     session.add(interaction)
-    await session.commit()
-    await session.refresh(interaction)
+    try:
+        await session.commit()
+        await session.refresh(interaction)
+    except SQLAlchemyError as exc:
+        await session.rollback()
+        log_event(logging.ERROR, "interaction_create_failed", error=str(exc))
+        raise InfrastructureError("Unable to create interaction.") from exc
+    log_event(logging.INFO, "interaction_created", interaction_id=interaction.id)
     return interaction
 
 
@@ -68,8 +79,14 @@ async def update_interaction(session: AsyncSession, interaction: HCPInteraction,
     changed_fields = [key for key, value in normalized.items() if current.get(key) != value]
     for key, value in normalized.items():
         setattr(interaction, key, value)
-    await session.commit()
-    await session.refresh(interaction)
+    try:
+        await session.commit()
+        await session.refresh(interaction)
+    except SQLAlchemyError as exc:
+        await session.rollback()
+        log_event(logging.ERROR, "interaction_update_failed", interaction_id=interaction.id, error=str(exc))
+        raise InfrastructureError("Unable to update interaction.") from exc
+    log_event(logging.INFO, "interaction_updated", interaction_id=interaction.id, changed_fields=changed_fields)
     return interaction, changed_fields
 
 
@@ -93,8 +110,14 @@ async def add_chat_message(
         confidence=confidence,
     )
     session.add(message)
-    await session.commit()
-    await session.refresh(message)
+    try:
+        await session.commit()
+        await session.refresh(message)
+    except SQLAlchemyError as exc:
+        await session.rollback()
+        log_event(logging.ERROR, "chat_message_persist_failed", interaction_id=interaction_id, role=role, error=str(exc))
+        raise InfrastructureError("Unable to save chat message.") from exc
+    log_event(logging.INFO, "chat_message_persisted", interaction_id=interaction_id, message_id=message.id, role=role, tool_name=tool_name)
     return message
 
 
@@ -103,5 +126,11 @@ async def fetch_history(session: AsyncSession, hcp_name: str, exclude_id: int | 
     if exclude_id:
         stmt = stmt.where(HCPInteraction.id != exclude_id)
     stmt = stmt.order_by(HCPInteraction.interaction_date.desc().nullslast(), HCPInteraction.created_at.desc()).limit(10)
-    result = await session.execute(stmt)
-    return list(result.scalars().all())
+    try:
+        result = await session.execute(stmt)
+    except SQLAlchemyError as exc:
+        log_event(logging.ERROR, "interaction_history_query_failed", hcp_name=hcp_name, exclude_id=exclude_id, error=str(exc))
+        raise InfrastructureError("Unable to fetch HCP history.") from exc
+    records = list(result.scalars().all())
+    log_event(logging.INFO, "interaction_history_fetched", hcp_name=hcp_name, exclude_id=exclude_id, result_count=len(records))
+    return records

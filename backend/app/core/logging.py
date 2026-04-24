@@ -1,8 +1,10 @@
-import logging
 import json
+import logging
 import sys
+from typing import Any
 
 from app.core.config import settings
+from app.core.context import get_request_id
 
 
 def configure_logging() -> None:
@@ -13,6 +15,11 @@ def configure_logging() -> None:
     )
 
 
-def log_event(level: int, event: str, **fields) -> None:
-    payload = {"event": event, **fields}
+def log_event(level: int, event: str, **fields: Any) -> None:
+    payload = {
+        "event": event,
+        "service": "aivoa-hcp-crm",
+        "request_id": get_request_id(),
+        **fields,
+    }
     logging.getLogger("aivoa.crm").log(level, json.dumps(payload, default=str))

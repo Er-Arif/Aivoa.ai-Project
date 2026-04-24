@@ -13,6 +13,7 @@ from langgraph.graph import END, START, StateGraph
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.agent.state import AgentState
+from app.core.exceptions import AIProcessingError, ConfigurationError, InfrastructureError
 from app.core.logging import log_event
 from app.models.hcp_interaction import HCPInteraction
 from app.services.groq_client import GroqClient, LLMJsonError
@@ -67,6 +68,8 @@ class InteractionAgent:
         except (LLMJsonError, ValueError) as exc:
             log_event(logging.WARNING, "agent_classification_failed", interaction_id=state["interaction_id"], error=str(exc))
             return {"tool_name": "GracefulFailureTool", "confidence": 0.0}
+        except (ConfigurationError, InfrastructureError):
+            raise
 
     async def _tool_execution(self, state: AgentState) -> AgentState:
         if state.get("tool_name") == "GracefulFailureTool":
@@ -78,6 +81,20 @@ class InteractionAgent:
             except (LLMJsonError, ValueError) as exc:
                 log_event(logging.WARNING, "agent_tool_failed", interaction_id=state["interaction_id"], selected_tool=state["tool_name"], error=str(exc))
                 result = graceful_failure()
+            except ConfigurationError:
+                raise
+            except InfrastructureError:
+                raise
+            except Exception as exc:
+                log_event(
+                    logging.ERROR,
+                    "agent_tool_unhandled_error",
+                    interaction_id=state["interaction_id"],
+                    selected_tool=state["tool_name"],
+                    error_type=type(exc).__name__,
+                    error=str(exc),
+                )
+                raise AIProcessingError() from exc
 
         log_event(
             logging.INFO,

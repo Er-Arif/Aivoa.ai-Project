@@ -25,15 +25,24 @@ class GroqClient:
             settings.groq_model_fallback,
         ]
         last_raw = ""
+        last_error: InfrastructureError | None = None
         for model in attempts:
             try:
                 raw = await self._completion(model, system_prompt, user_prompt)
                 log_event(logging.INFO, "llm_completion_received", model=model, raw_llm_output=raw)
             except ConfigurationError:
                 raise
-            except httpx.HTTPError as exc:
-                last_raw = str(exc)
-                log_event(logging.WARNING, "llm_http_error", model=model, error=str(exc))
+            except InfrastructureError as exc:
+                last_error = exc
+                last_raw = exc.provider_detail or str(exc)
+                log_event(
+                    logging.WARNING,
+                    "llm_request_failed",
+                    model=model,
+                    provider_status_code=exc.provider_status_code,
+                    provider_detail=exc.provider_detail,
+                    error=str(exc),
+                )
                 continue
             last_raw = raw
             try:
@@ -41,6 +50,8 @@ class GroqClient:
                 return parsed, raw, model
             except json.JSONDecodeError:
                 log_event(logging.WARNING, "invalid_llm_json", model=model, raw_llm_output=raw)
+        if last_error:
+            raise LLMJsonError(last_raw or "LLM request failed")
         raise LLMJsonError(last_raw or "LLM did not return valid JSON")
 
     async def _completion(self, model: str, system_prompt: str, user_prompt: str) -> str:
@@ -62,7 +73,19 @@ class GroqClient:
                 response.raise_for_status()
                 data = response.json()
             except httpx.HTTPStatusError as exc:
-                raise InfrastructureError(f"Groq request failed with status {exc.response.status_code}") from exc
+                detail = exc.response.text
+                log_event(
+                    logging.WARNING,
+                    "groq_http_status_error",
+                    model=model,
+                    provider_status_code=exc.response.status_code,
+                    provider_detail=detail,
+                )
+                raise InfrastructureError(
+                    "The AI service returned an invalid response. Please try again.",
+                    provider_status_code=exc.response.status_code,
+                    provider_detail=detail,
+                ) from exc
             except httpx.HTTPError as exc:
                 raise InfrastructureError("Unable to reach Groq API") from exc
         return data["choices"][0]["message"]["content"].strip()

@@ -1,7 +1,10 @@
 from datetime import date, time
+import json
 
 from app.services.normalization import compute_status, normalize_patch
+from app.services.groq_client import GroqClient, LLMJsonError
 from app.tools.interaction_tools import _build_log_reply, _build_suggestion_reply, _extract_suggested_followups, _has_explicit_time, _mentions_today, LLMToolPayload
+from app.core.exceptions import InfrastructureError
 
 
 def test_normalize_patch_canonicalizes_date_time_sentiment_and_lists():
@@ -89,3 +92,39 @@ def test_extract_suggested_followups_handles_multiple_shapes():
 def test_build_suggestion_reply_lists_actions():
     assert "Schedule follow-up" in _build_suggestion_reply(["Schedule follow-up meeting"])
     assert "these next follow-up actions" in _build_suggestion_reply(["A", "B"])
+
+
+async def _fake_completion_retry(self, model, system_prompt, user_prompt):
+    if not hasattr(self, "_calls"):
+        self._calls = []
+    self._calls.append(model)
+    if len(self._calls) < 3:
+        raise InfrastructureError("provider failed", provider_status_code=400, provider_detail="bad request")
+    return json.dumps({"tool_name": "LogInteractionTool", "confidence": 0.8})
+
+
+async def _fake_completion_fail(self, model, system_prompt, user_prompt):
+    raise InfrastructureError("provider failed", provider_status_code=400, provider_detail="bad request")
+
+
+import pytest
+
+
+@pytest.mark.asyncio
+async def test_groq_client_retries_before_success(monkeypatch):
+    monkeypatch.setattr(GroqClient, "_completion", _fake_completion_retry)
+    client = GroqClient()
+
+    parsed, _, model = await client.json_completion("system", "user")
+
+    assert parsed["tool_name"] == "LogInteractionTool"
+    assert model == "llama-3.3-70b-versatile"
+
+
+@pytest.mark.asyncio
+async def test_groq_client_raises_json_error_after_all_provider_failures(monkeypatch):
+    monkeypatch.setattr(GroqClient, "_completion", _fake_completion_fail)
+    client = GroqClient()
+
+    with pytest.raises(LLMJsonError):
+        await client.json_completion("system", "user")

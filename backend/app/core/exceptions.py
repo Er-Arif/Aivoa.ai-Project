@@ -22,8 +22,16 @@ class AIProcessingError(AppError):
 
 
 class InfrastructureError(AppError):
-    def __init__(self, message: str = "The service is temporarily unavailable. Please try again.") -> None:
+    def __init__(
+        self,
+        message: str = "The service is temporarily unavailable. Please try again.",
+        *,
+        provider_status_code: int | None = None,
+        provider_detail: str | None = None,
+    ) -> None:
         super().__init__(message, status_code=status.HTTP_503_SERVICE_UNAVAILABLE, code="infrastructure_error")
+        self.provider_status_code = provider_status_code
+        self.provider_detail = provider_detail
 
 
 class ConfigurationError(AppError):

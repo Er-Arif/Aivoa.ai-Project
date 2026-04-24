@@ -17,6 +17,34 @@ START -> classify_intent -> tool_execution -> format_response -> END
 
 The frontend never sends field patches directly from user input. It sends natural language to `/api/v1/chat`; the backend agent validates, normalizes, persists, and returns the canonical interaction state.
 
+## LangGraph Agent Role
+
+The LangGraph agent is the orchestration layer for the HCP interaction workflow.
+
+Its role in this project is to:
+
+- receive the user’s natural-language CRM request
+- inspect the current interaction state
+- classify the intent of the request
+- choose exactly one primary sales-related tool for that request
+- execute the tool
+- persist structured results through the backend service layer
+- return the updated interaction state and assistant response to the UI
+
+In practical terms, the LangGraph agent manages the full HCP interaction lifecycle for this module:
+
+- creating/logging new HCP interactions
+- editing previously logged interaction details
+- summarizing the current interaction for CRM usage
+- retrieving prior HCP interaction history
+- recommending next-step follow-up actions for field representatives
+
+Graph flow used in the implementation:
+
+```text
+START -> classify_intent -> tool_execution -> format_response -> END
+```
+
 ## Features
 
 - Read-only CRM form styled as real inputs/selects/textareas/radios.
@@ -32,6 +60,62 @@ The frontend never sends field patches directly from user input. It sends natura
 - Structured logs for AI decisions, raw output, validated output, and DB results.
 - Field highlight flash for updated fields.
 - Demo seed data for Dr. Sharma history.
+
+## LangGraph Tools
+
+This project defines five sales-focused LangGraph tools for HCP interaction management.
+
+### 1. LogInteractionTool
+
+Purpose:
+- Capture a new HCP interaction from natural language entered in chat.
+
+How it works:
+- Uses the LLM to extract structured CRM fields such as HCP name, interaction type, date, time, sentiment, topics discussed, and materials shared.
+- Supports summarization/entity-style extraction from free-form field rep notes.
+- Normalizes outputs before persistence.
+- Saves the interaction to the SQL database and returns the updated form state.
+
+### 2. EditInteractionTool
+
+Purpose:
+- Modify an already logged HCP interaction.
+
+How it works:
+- Uses the current saved interaction plus the user’s correction message.
+- Updates only the fields explicitly mentioned by the user.
+- Preserves untouched fields by performing a safe partial backend merge.
+- Returns the updated interaction without replacing the entire object.
+
+### 3. SummarizeInteractionTool
+
+Purpose:
+- Generate a concise CRM-ready summary of the current HCP interaction.
+
+How it works:
+- Reads the structured interaction state.
+- Uses the LLM to create a concise summary suitable for CRM review or downstream usage.
+
+### 4. FetchHCPHistoryTool
+
+Purpose:
+- Retrieve historical interactions for the same HCP.
+
+How it works:
+- Uses the HCP name from the current form or user request.
+- Queries the database for prior interactions.
+- Returns the history separately without overwriting the active interaction form.
+
+### 5. SuggestNextActionTool
+
+Purpose:
+- Recommend practical next actions for sales/follow-up activity.
+
+How it works:
+- Uses the saved interaction context.
+- Generates actionable follow-up suggestions for field reps.
+- Persists those suggestions into `ai_suggested_followups`.
+- Returns them to the UI as clickable quick actions.
 
 ## Setup
 
